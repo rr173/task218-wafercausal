@@ -1,0 +1,12 @@
+# 运行时数据库与 WAL
+*.db
+*.db-wal
+*.db-shm
+*.smoke-*.db
+
+# 构建产物
+/wafercausal
+*.out
+
+# 编辑器
+.DS_Store
