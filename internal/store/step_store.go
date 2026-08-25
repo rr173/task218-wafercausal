@@ -50,7 +50,7 @@ func (s *StepStore) GetStep(ctx context.Context, id int64) (*model.ProcessStep, 
 func (s *StepStore) ListStepsByBatch(ctx context.Context, batchID int64) ([]*model.ProcessStep, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, batch_id, name, seq, parent_step_id, tool, created_at
-		 FROM process_steps WHERE batch_id = ? ORDER BY seq DESC;`, batchID)
+		 FROM process_steps WHERE batch_id = ? ORDER BY seq ASC;`, batchID)
 	if err != nil {
 		return nil, err
 	}

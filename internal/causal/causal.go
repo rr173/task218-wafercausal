@@ -159,11 +159,18 @@ func scoreStep(st *model.ProcessStep, evs []*model.ProcessEvent, tRef time.Time)
 	return best * trustFactor
 }
 
-// downstreamPath 返回从 root 步骤沿依赖顺序（seq 递增）到链尾的步骤 ID。
+// downstreamPath 返回从 root 步骤起沿依赖顺序（seq 递增）到链尾的完整步骤 ID。
+// 路径以根因步骤本身开头，并按后续工艺依赖顺序完整保存。
 func downstreamPath(root *model.ProcessStep, steps []*model.ProcessStep) []int64 {
+	// 按 seq 升序遍历，确保路径沿工艺依赖顺序排列。
+	ordered := make([]*model.ProcessStep, len(steps))
+	copy(ordered, steps)
+	sort.Slice(ordered, func(i, j int) bool {
+		return ordered[i].Sequence < ordered[j].Sequence
+	})
 	var ids []int64
-	for _, st := range steps {
-		if st.Sequence > root.Sequence {
+	for _, st := range ordered {
+		if st.Sequence >= root.Sequence {
 			ids = append(ids, st.ID)
 		}
 	}
