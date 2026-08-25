@@ -441,7 +441,13 @@ func (s *Service) PublishSnapshot(ctx context.Context, batchID int64, name strin
 		return nil, err
 	}
 	for _, c := range cands {
-		if err := s.repos.Snapshots.AddSnapshotCandidate(ctx, snap.ID, c.ID, model.CausalStatusCandidate); err != nil {
+		// 冻结每个候选发布时刻的实际裁决状态：已确认根因不可在快照证据中
+		// 退化为普通 candidate；其余状态（excluded / superseded / candidate）原样固化。
+		decision := c.Status
+		if decision == "" {
+			decision = model.CausalStatusCandidate
+		}
+		if err := s.repos.Snapshots.AddSnapshotCandidate(ctx, snap.ID, c.ID, decision); err != nil {
 			return nil, err
 		}
 	}

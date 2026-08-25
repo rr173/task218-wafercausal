@@ -90,11 +90,16 @@ func (s *SnapshotStore) Supersede(ctx context.Context, batchID int64, exceptVers
 	return res.RowsAffected()
 }
 
-// AddSnapshotCandidate 冻结快照与候选的关联。
+// AddSnapshotCandidate 冻结快照与候选的关联，记录该候选在发布时刻的裁决结果。
+// decision 必须为该候选当时实际的状态（candidate / confirmed_root / excluded / superseded），
+// 落盘后即不可变证据，调用方负责冻结正确状态，本方法不得改写其语义。
 func (s *SnapshotStore) AddSnapshotCandidate(ctx context.Context, snapshotID, candidateID int64, decision string) error {
+	if decision == "" {
+		decision = model.CausalStatusCandidate
+	}
 	_, err := s.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO snapshot_candidates (snapshot_id, candidate_id, decision) VALUES (?, ?, ?);`,
-		snapshotID, candidateID, model.CausalStatusCandidate)
+		snapshotID, candidateID, decision)
 	return err
 }
 

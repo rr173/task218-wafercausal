@@ -94,3 +94,67 @@ func TestFreezeStateMachine(t *testing.T) {
 		t.Fatalf("expected ErrStateMachine on second freeze, got %v", err)
 	}
 }
+
+// TestSnapshotFreezesConfirmedRoot 验证发布因果快照时冻结每个候选当时的裁决结果：
+// 已确认的根因不得在快照关联中退化为普通 candidate，排除项亦应原样固化。
+// 这条回归覆盖「快照证据不可变」语义曾被破坏的情形。
+func TestSnapshotFreezesConfirmedRoot(t *testing.T) {
+	ctx := context.Background()
+	app, st := newTestService(t)
+	defer st.Close()
+
+	if err := app.RunDemo(ctx); err != nil {
+		t.Fatalf("RunDemo: %v", err)
+	}
+	batches, err := app.ListBatches(ctx)
+	if err != nil || len(batches) == 0 {
+		t.Fatalf("list batches: %d %v", len(batches), err)
+	}
+	batchID := batches[0].ID
+
+	// 发布前的候选状态：应有 confirmed_root 与 excluded（同簇确认后自动排除）。
+	cands, err := app.ListCandidates(ctx, batchID)
+	if err != nil {
+		t.Fatalf("list candidates: %v", err)
+	}
+	want := map[int64]string{}
+	hasConfirmed, hasExcluded := false, false
+	for _, c := range cands {
+		want[c.ID] = c.Status
+		if c.Status == model.CausalStatusConfirmedRoot {
+			hasConfirmed = true
+		}
+		if c.Status == model.CausalStatusExcluded {
+			hasExcluded = true
+		}
+	}
+	if !hasConfirmed || !hasExcluded {
+		t.Fatalf("demo preconditions: need confirmed_root and excluded candidates, got %+v", want)
+	}
+
+	snaps, err := app.ListSnapshots(ctx, batchID)
+	if err != nil || len(snaps) == 0 {
+		t.Fatalf("list snapshots: %d %v", len(snaps), err)
+	}
+	frozen, err := app.Repos().Snapshots.ListSnapshotCandidates(ctx, snaps[0].ID)
+	if err != nil {
+		t.Fatalf("list snapshot candidates: %v", err)
+	}
+	if len(frozen) != len(cands) {
+		t.Fatalf("expected %d frozen candidates, got %d", len(cands), len(frozen))
+	}
+	for _, sc := range frozen {
+		expected, ok := want[sc.CandidateID]
+		if !ok {
+			t.Fatalf("frozen candidate %d not in batch candidates", sc.CandidateID)
+		}
+		if sc.Decision != expected {
+			t.Fatalf("frozen decision mismatch for candidate %d: want %s, got %s "+
+				"(confirmed root must not degrade to candidate)",
+				sc.CandidateID, expected, sc.Decision)
+		}
+		if expected == model.CausalStatusConfirmedRoot && sc.Decision != model.CausalStatusConfirmedRoot {
+			t.Fatalf("confirmed root degraded to %s in snapshot", sc.Decision)
+		}
+	}
+}
