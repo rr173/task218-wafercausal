@@ -92,10 +92,10 @@ func (s *ClusterStore) AddClusterDefect(ctx context.Context, clusterID, defectID
 	return err
 }
 
-// ListClusterDefectIDs 列出某空间簇归属的缺陷 ID。
+// ListClusterDefectIDs 列出某空间簇归属的全部缺陷 ID。
 func (s *ClusterStore) ListClusterDefectIDs(ctx context.Context, clusterID int64) ([]int64, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT defect_id FROM cluster_defects WHERE cluster_id = ? ORDER BY defect_id ASC LIMIT -1 OFFSET 1;`, clusterID)
+		`SELECT defect_id FROM cluster_defects WHERE cluster_id = ? ORDER BY defect_id ASC;`, clusterID)
 	if err != nil {
 		return nil, err
 	}

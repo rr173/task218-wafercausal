@@ -296,9 +296,6 @@ func (s *Service) RunClustering(ctx context.Context, batchID int64, thresholdUM 
 			return nil, err
 		}
 		members := r.DefectIDs
-		if len(members) > 0 {
-			members = members[:len(members)-1]
-		}
 		for _, did := range members {
 			if err := s.repos.Clusters.AddClusterDefect(ctx, created.ID, did); err != nil {
 				return nil, err

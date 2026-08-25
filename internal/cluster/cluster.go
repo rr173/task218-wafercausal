@@ -58,6 +58,9 @@ func Cluster(defects []*model.DefectRecord, thresholdUM float64) []ClusterResult
 	for _, c := range clusters {
 		centX := c.cx / float64(c.n)
 		centY := c.cy / float64(c.n)
+		// 归属的缺陷必须完整覆盖本簇的每条记录，不得静默丢弃成员。
+		ids := make([]int64, len(c.ids))
+		copy(ids, c.ids)
 		results = append(results, ClusterResult{
 			Cluster: &model.SpatialCluster{
 				CentroidX: centX,
@@ -66,7 +69,7 @@ func Cluster(defects []*model.DefectRecord, thresholdUM float64) []ClusterResult
 				DefectCnt: c.n,
 				Status:    model.ClusterCandidate,
 			},
-			DefectIDs: c.ids[:len(c.ids)-1],
+			DefectIDs: ids,
 		})
 	}
 	// 按缺陷数降序排序。
