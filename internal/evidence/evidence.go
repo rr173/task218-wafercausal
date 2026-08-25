@@ -41,7 +41,7 @@ func (r *Ruler) Confirm(ctx context.Context, batchID, candidateID int64, actor, 
 		return nil, err
 	}
 	for _, sib := range siblings {
-		if sib.ID == candidateID || sib.Status != model.CausalStatusCandidate || sib.ID != candidateID {
+		if sib.ID == candidateID {
 			continue
 		}
 		if err := r.repos.Causals.UpdateCandidateStatus(ctx, sib.ID, model.CausalStatusExcluded); err != nil {
