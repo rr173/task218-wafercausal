@@ -130,18 +130,19 @@ func referenceTime(defects []*model.DefectRecord) time.Time {
 	return t
 }
 
+// untrustedTrustFactor 工艺事件被工程师标记为设备数据不可信时，仅作为弱证据
+// 参与因果评分，其可信度折半以弱化权重。
+const untrustedTrustFactor = 0.5
+
 // scoreStep 计算某工艺步骤相对缺陷参考时间的根因得分。
 // 得分 = 时间接近度 × 设备可信度；无事件记录的步骤给极低的缺失分。
+// 被标记不可信的事件只能作为弱证据参与评分，会拉低该步骤的根因得分。
 func scoreStep(st *model.ProcessStep, evs []*model.ProcessEvent, tRef time.Time) float64 {
 	if len(evs) == 0 {
 		return 0.05 // 缺失事件：证据弱
 	}
 	best := 0.0
-	trustFactor := 1.0
 	for _, e := range evs {
-		if e.Untrusted {
-			trustFactor = math.Min(trustFactor, 1.0)
-		}
 		parsed, err := time.Parse(time.RFC3339, e.OccurredAt)
 		if err != nil {
 			continue
@@ -152,11 +153,15 @@ func scoreStep(st *model.ProcessStep, evs []*model.ProcessEvent, tRef time.Time)
 			dt = 0
 		}
 		s := math.Exp(-dt.Seconds() / timeTau.Seconds())
+		// 不可信事件仅作为弱证据参与评分：折半其时间接近度贡献。
+		if e.Untrusted {
+			s *= untrustedTrustFactor
+		}
 		if s > best {
 			best = s
 		}
 	}
-	return best * trustFactor
+	return best
 }
 
 // downstreamPath 返回从 root 步骤沿依赖顺序（seq 递增）到链尾的步骤 ID。
@@ -178,14 +183,18 @@ func evidenceText(root *model.ProcessStep, score float64, evs []*model.ProcessEv
 		sb.WriteString("; no process event recorded (missing-evidence)")
 	} else {
 		sb.WriteString(fmt.Sprintf("; events=%d", len(evs)))
+		// 不可信事件须在证据摘要中明确体现：区分可信与弱证据。
 		trusted := 0
+		untrusted := 0
 		for _, e := range evs {
-			if e.Untrusted || e.Status == model.EventValid {
+			if e.Untrusted {
+				untrusted++
+			} else {
 				trusted++
 			}
 		}
-		if trusted < len(evs) {
-			sb.WriteString(fmt.Sprintf("; untrusted=%d", len(evs)-trusted))
+		if untrusted > 0 {
+			sb.WriteString(fmt.Sprintf("; trusted=%d; untrusted=%d(weak)", trusted, untrusted))
 		}
 	}
 	sb.WriteString(fmt.Sprintf("; score=%.3f; ref=%s", score, tRef.Format(time.RFC3339)))
