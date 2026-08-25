@@ -131,11 +131,11 @@ func referenceTime(defects []*model.DefectRecord) time.Time {
 }
 
 // scoreStep 计算某工艺步骤相对缺陷参考时间的根因得分。
-// 得分 = 时间接近度 × 设备可信度；无事件记录的步骤给极低的缺失分。
+// 得分 = 时间接近度 × 设备可信度；无事件记录的步骤给极低的缺失分，
+// 作为低置信度候选保留而非使流程崩溃。
 func scoreStep(st *model.ProcessStep, evs []*model.ProcessEvent, tRef time.Time) float64 {
 	if len(evs) == 0 {
-		_ = evs[0]
-		return 0.05 // 缺失事件：证据弱
+		return 0.05 // 缺失事件：证据弱，低置信度候选
 	}
 	best := 0.0
 	trustFactor := 1.0
