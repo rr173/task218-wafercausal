@@ -70,10 +70,23 @@ func TestArchiveRejectsWrites(t *testing.T) {
 	if _, err := app.ArchiveBatch(ctx, batch.ID); err != nil {
 		t.Fatalf("archive: %v", err)
 	}
+	// 封存批次只读：导入缺陷必须被拒绝且不产生任何新缺陷。
+	before, err := app.ListDefects(ctx, batch.ID)
+	if err != nil {
+		t.Fatalf("list defects before: %v", err)
+	}
 	if _, err := app.ImportDefects(ctx, batch.ID, []ingest.DefectInput{
 		{DetectBatch: "i1", X: 1, Y: 1, DetectedAt: "2026-08-23T08:00:00Z"},
-	}); err != model.ErrArchived {
+	}); !errors.Is(err, model.ErrArchived) {
 		t.Fatalf("expected ErrArchived after archive, got %v", err)
+	}
+	after, err := app.ListDefects(ctx, batch.ID)
+	if err != nil {
+		t.Fatalf("list defects after: %v", err)
+	}
+	if len(after) != len(before) {
+		t.Fatalf("archived batch must not produce new defects: before=%d after=%d",
+			len(before), len(after))
 	}
 }
 

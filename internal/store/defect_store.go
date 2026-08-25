@@ -19,7 +19,7 @@ func (s *DefectStore) InsertDefect(ctx context.Context, d *model.DefectRecord) (
 	if err := s.db.QueryRowContext(ctx, `SELECT status FROM wafer_batches WHERE id = ?;`, d.BatchID).Scan(&batchStatus); err != nil {
 		return nil, err
 	}
-	if batchStatus == model.BatchConfirmed {
+	if batchStatus == model.BatchArchived {
 		return nil, model.ErrArchived
 	}
 	res, err := s.db.ExecContext(ctx,

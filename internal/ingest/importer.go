@@ -58,8 +58,9 @@ func Fingerprint(waferID, detectBatch string, x, y, radiusUM float64, detectedAt
 }
 
 // ImportDefects 批量接收缺陷记录。逐条校验并幂等写入，重复项跳过。
+// 已封存批次只读：拒绝写入且不产生任何新缺陷。
 func (im *Importer) ImportDefects(ctx context.Context, batch *model.WaferBatch, inputs []DefectInput) (*ImportResult, error) {
-	if batch.Status == model.BatchConfirmed {
+	if batch.Status == model.BatchArchived {
 		return nil, model.ErrArchived
 	}
 	if len(inputs) == 0 {

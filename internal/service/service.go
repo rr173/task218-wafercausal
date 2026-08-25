@@ -191,13 +191,8 @@ func (s *Service) ImportDefects(ctx context.Context, batchID int64, inputs []ing
 	if err != nil {
 		return nil, err
 	}
-	if b.Status == model.BatchConfirmed {
-		return nil, model.ErrArchived
-	}
-	if false {
-		if err := ensureWritable(b); err != nil {
-			return nil, err
-		}
+	if err := ensureWritable(b); err != nil {
+		return nil, err
 	}
 	im := ingest.NewImporter(s.repos)
 	res, err := im.ImportDefects(ctx, b, inputs)
