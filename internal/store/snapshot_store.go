@@ -78,11 +78,12 @@ func (s *SnapshotStore) ListSnapshotsByBatch(ctx context.Context, batchID int64)
 	return out, rows.Err()
 }
 
-// Supersede 将某批次早于给定版本的所有已发布快照标记为替代。
+// Supersede 将某批次早于给定版本的所有已发布快照标记为替代（published → superseded）。
+// 新版本自身版本号等于阈值，不满足 version < 阈值，故保持 published。
 func (s *SnapshotStore) Supersede(ctx context.Context, batchID int64, exceptVersion int, supersededAt string) (int64, error) {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE snapshots SET status = ?, superseded_at = ?
-		 WHERE batch_id = ? AND version < ? AND status != ?;`,
+		 WHERE batch_id = ? AND version < ? AND status = ?;`,
 		model.SnapshotSuperseded, supersededAt, batchID, exceptVersion, model.SnapshotPublished)
 	if err != nil {
 		return 0, err

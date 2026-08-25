@@ -445,8 +445,8 @@ func (s *Service) PublishSnapshot(ctx context.Context, batchID int64, name strin
 			return nil, err
 		}
 	}
-	// 早于当前版本的已发布快照标记为替代。
-	_, _ = s.repos.Snapshots.Supersede(ctx, batchID, ver+1, now)
+	// 早于当前版本的已发布快照标记为替代；新版本本身不参与（version < ver）。
+	_, _ = s.repos.Snapshots.Supersede(ctx, batchID, ver, now)
 	_ = s.repos.AuditEvent(ctx, "system", "snapshot.publish", fmt.Sprintf("batch:%d", batchID),
 		fmt.Sprintf("version=%d", ver))
 	return snap, nil
